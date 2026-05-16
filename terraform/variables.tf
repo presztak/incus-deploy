@@ -3,14 +3,18 @@ variable "incus_remote" {
   default = "local"
 }
 
-variable "incus_instance_names" {
-  type    = list(string)
-  default = ["server01", "server02", "server03", "server04", "server05"]
+# Clusters to deploy: cluster name => VM names. All share the project and OVN uplink.
+variable "clusters" {
+  type = map(list(string))
+  default = {
+    cluster1 = ["server01", "server02", "server03"]
+    cluster2 = ["server11", "server12", "server13"]
+  }
 }
 
 variable "incus_image" {
   type    = string
-  default = "ubuntu/22.04"
+  default = "ubuntu/24.04"
 }
 
 variable "incus_storage_pool" {

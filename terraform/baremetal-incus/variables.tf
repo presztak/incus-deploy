@@ -1,3 +1,7 @@
+variable "cluster_name" {
+  type = string
+}
+
 variable "project_name" {
   type = string
 }
@@ -22,12 +26,6 @@ variable "network" {
   type = string
 }
 
-variable "ovn_uplink_ipv4_address" {
-  type    = string
-  default = ""
-}
-
-variable "ovn_uplink_ipv6_address" {
-  type    = string
-  default = ""
+variable "uplink_network" {
+  type = string
 }

@@ -1,0 +1,85 @@
+# One group per cluster; groups and hosts must match `clusters` in terraform exactly.
+# Each group sets cluster_name and its own slice of the shared OVN uplink.
+#   ansible-playbook deploy.yaml                   # all clusters
+#   ansible-playbook deploy.yaml --limit cluster1  # one cluster
+all:
+  vars:
+    ansible_connection: community.general.incus
+    ansible_incus_remote: local
+    ansible_incus_project: dev-incus-deploy
+    ansible_user: root
+    ansible_become: no
+
+    incus_name: "{{ cluster_name }}"
+    incus_release: "stable"
+    incus_roles:
+      - cluster
+      - ui
+
+    lvmcluster_name: "{{ cluster_name }}"
+    lvmcluster_metadata_size: 100m
+    lvmcluster_vgs:
+      vg0: "/dev/disk/by-id/nvme-QEMU_NVMe_Ctrl_incus_disk4"
+
+    ovn_name: "{{ cluster_name }}"
+    ovn_az_name: "zone1"
+    ovn_release: "ppa"
+    ovn_roles:
+      - central
+      - host
+
+    incus_init:
+      network:
+        LOCAL:
+          type: macvlan
+          local_config:
+            parent: enp5s0
+          description: Directly attach to host networking
+        UPLINK:
+          type: physical
+          config:
+            ipv4.gateway: "172.31.254.1/24"
+            ipv6.gateway: "fd00:1e4d:637d:1234::1/64"
+            ipv4.ovn.ranges: "{{ ovn_uplink_range }}"
+            dns.nameservers: "1.1.1.1,1.0.0.1"
+          local_config:
+            parent: enp6s0
+          description: Physical network for OVN routers
+        default:
+          type: ovn
+          config:
+            network: UPLINK
+          default: true
+          description: Initial OVN network
+      storage:
+        local:
+          driver: zfs
+          local_config:
+            source: "/dev/disk/by-id/nvme-QEMU_NVMe_Ctrl_incus_disk3"
+          description: Local storage pool
+        shared:
+          driver: lvmcluster
+          local_config:
+            lvm.vg_name: "vg0"
+            source: "vg0"
+          default: true
+          description: Shared storage pool (cluster-wide)
+
+  children:
+    cluster1:
+      vars:
+        cluster_name: cluster1
+        ovn_uplink_range: "172.31.254.10-172.31.254.49"
+      hosts:
+        server01:
+        server02:
+        server03:
+
+    cluster2:
+      vars:
+        cluster_name: cluster2
+        ovn_uplink_range: "172.31.254.50-172.31.254.89"
+      hosts:
+        server11:
+        server12:
+        server13:

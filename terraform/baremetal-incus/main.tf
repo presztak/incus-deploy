@@ -1,32 +1,6 @@
-resource "incus_project" "this" {
-  name        = var.project_name
-  description = "Project used to test incus-deploy"
-  config = {
-    "features.images"          = false
-    "features.networks"        = false
-    "features.networks.zones"  = false
-    "features.profiles"        = true
-    "features.storage.buckets" = true
-    "features.storage.volumes" = true
-  }
-}
-
-resource "incus_network" "this" {
-  project     = incus_project.this.name
-  name        = "br-ovn-test"
-  description = "Network used to test incus-deploy (OVN uplink)"
-
-  config = {
-    "ipv4.address" = var.ovn_uplink_ipv4_address
-    "ipv4.nat"     = "true"
-    "ipv6.address" = var.ovn_uplink_ipv6_address
-    "ipv6.nat"     = "true"
-  }
-}
-
 resource "incus_profile" "this" {
-  project     = incus_project.this.name
-  name        = "cluster"
+  project     = var.project_name
+  name        = var.cluster_name
   description = "Profile to be used by the cluster VMs"
 
   config = {
@@ -69,7 +43,7 @@ resource "incus_profile" "this" {
     name = "eth1"
 
     properties = {
-      "network" = incus_network.this.name
+      "network" = var.uplink_network
       "name"    = "eth1"
     }
   }
@@ -86,36 +60,10 @@ resource "incus_profile" "this" {
   }
 }
 
-resource "incus_storage_volume" "disk1" {
-  for_each = var.instance_names
-
-  project      = incus_project.this.name
-  name         = "${each.value}-disk1"
-  description  = "First CEPH OSD drive"
-  pool         = var.storage_pool
-  content_type = "block"
-  config = {
-    "size" = "20GiB"
-  }
-}
-
-resource "incus_storage_volume" "disk2" {
-  for_each = var.instance_names
-
-  project      = incus_project.this.name
-  name         = "${each.value}-disk2"
-  description  = "Second CEPH OSD drive"
-  pool         = var.storage_pool
-  content_type = "block"
-  config = {
-    "size" = "20GiB"
-  }
-}
-
 resource "incus_storage_volume" "disk3" {
   for_each = var.instance_names
 
-  project      = incus_project.this.name
+  project      = var.project_name
   name         = "${each.value}-disk3"
   description  = "Local storage drive"
   pool         = var.storage_pool
@@ -126,8 +74,8 @@ resource "incus_storage_volume" "disk3" {
 }
 
 resource "incus_storage_volume" "disk4" {
-  project      = incus_project.this.name
-  name         = "shared-disk"
+  project      = var.project_name
+  name         = "${var.cluster_name}-shared-disk"
   description  = "Shared block storage"
   pool         = var.storage_pool
   content_type = "block"
@@ -137,49 +85,14 @@ resource "incus_storage_volume" "disk4" {
   }
 }
 
-resource "incus_storage_volume" "disk5" {
-  for_each = var.instance_names
-
-  project      = incus_project.this.name
-  name         = "${each.value}-disk5"
-  description  = "Linstor drive"
-  pool         = var.storage_pool
-  content_type = "block"
-  config = {
-    "size" = "50GiB"
-  }
-}
-
 resource "incus_instance" "instances" {
   for_each = var.instance_names
 
-  project  = incus_project.this.name
+  project  = var.project_name
   name     = each.value
   type     = "virtual-machine"
   image    = var.image
   profiles = ["default", incus_profile.this.name]
-
-  device {
-    type = "disk"
-    name = "disk1"
-
-    properties = {
-      "pool"   = var.storage_pool
-      "io.bus" = "nvme"
-      "source" = incus_storage_volume.disk1[each.key].name
-    }
-  }
-
-  device {
-    type = "disk"
-    name = "disk2"
-
-    properties = {
-      "pool"   = var.storage_pool
-      "io.bus" = "nvme"
-      "source" = incus_storage_volume.disk2[each.key].name
-    }
-  }
 
   device {
     type = "disk"
@@ -189,17 +102,6 @@ resource "incus_instance" "instances" {
       "pool"   = var.storage_pool
       "io.bus" = "nvme"
       "source" = incus_storage_volume.disk3[each.key].name
-    }
-  }
-
-  device {
-    type = "disk"
-    name = "disk5"
-
-    properties = {
-      "pool"   = var.storage_pool
-      "io.bus" = "nvme"
-      "source" = incus_storage_volume.disk5[each.key].name
     }
   }
 

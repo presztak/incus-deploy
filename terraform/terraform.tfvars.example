@@ -14,6 +14,12 @@ incus_image          = "ubuntu/22.04"   # Incus image to use for the VMs
 incus_storage_pool   = "default"        # Name of the storage pool to use for the VMs and volumes
 incus_network        = "incusbr0"       # Name of the network to use for the VMs
 
+# Clusters to deploy (cluster name => VM names)
+clusters = {
+  cluster1 = ["server01", "server02", "server03"]
+  cluster2 = ["server11", "server12", "server13"]
+}
+
 # OVN uplink configuration
 ovn_uplink_ipv4_address = "172.31.254.1/24"
 ovn_uplink_ipv6_address = "fd00:1e4d:637d:1234::1/64"

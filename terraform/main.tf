@@ -1,25 +1,41 @@
-module "baremetal" {
-  source = "./baremetal-incus"
+# Shared by all clusters, created once.
+resource "incus_project" "this" {
+  name        = "dev-incus-deploy"
+  description = "Project used to test incus-deploy"
+  config = {
+    "features.images"          = false
+    "features.networks"        = false
+    "features.networks.zones"  = false
+    "features.profiles"        = true
+    "features.storage.buckets" = true
+    "features.storage.volumes" = true
+  }
+}
 
-  project_name   = "dev-incus-deploy"
-  instance_names = var.incus_instance_names
+resource "incus_network" "this" {
+  project     = incus_project.this.name
+  name        = "br-ovn-test"
+  description = "Network used to test incus-deploy (OVN uplink)"
+
+  config = {
+    "ipv4.address" = var.ovn_uplink_ipv4_address
+    "ipv4.nat"     = "true"
+    "ipv6.address" = var.ovn_uplink_ipv6_address
+    "ipv6.nat"     = "true"
+  }
+}
+
+module "baremetal" {
+  source   = "./baremetal-incus"
+  for_each = var.clusters
+
+  project_name   = incus_project.this.name
+  cluster_name   = each.key
+  instance_names = each.value
   image          = "images:${var.incus_image}"
   memory         = "4GiB"
 
-  storage_pool = var.incus_storage_pool
-  network      = var.incus_network
-
-  ovn_uplink_ipv4_address = var.ovn_uplink_ipv4_address
-  ovn_uplink_ipv6_address = var.ovn_uplink_ipv6_address
-}
-
-module "services" {
-  source = "./services"
-
-  project_name   = "dev-incus-deploy-services"
-  instance_names = ["ceph-mds01", "ceph-mds02", "ceph-mds03", "ceph-mgr01", "ceph-mgr02", "ceph-mgr03", "ceph-rgw01", "ceph-rgw02", "ceph-rgw03"]
-  image          = "images:${var.incus_image}"
-
-  storage_pool = var.incus_storage_pool
-  network      = var.incus_network
+  storage_pool   = var.incus_storage_pool
+  network        = var.incus_network
+  uplink_network = incus_network.this.name
 }
