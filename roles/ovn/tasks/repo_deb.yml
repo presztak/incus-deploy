@@ -7,10 +7,10 @@
     state: directory
   when: 'ovn_roles|length > 0 and ovn_release != "distro"'
 
-- name: Add PPA GPG key
-  ansible.builtin.copy:
-    src: ovn-ppa.asc
-    dest: /etc/apt/keyrings/ansible-ovn-ppa.asc
+- name: Add Zabbly repository key
+  ansible.builtin.get_url:
+    url: "https://pkgs.zabbly.com/key.asc"
+    dest: "/etc/apt/keyrings/ansible-zabbly.asc"
     mode: "0644"
   notify: Update apt
   when: 'ovn_roles|length > 0 and ovn_release == "ppa"'
@@ -20,12 +20,12 @@
   register: ovn_dpkg_architecture
   changed_when: false
   check_mode: false
-  when: 'ovn_roles|length > 0 and ovn_release != "distro"'
+  when: 'ovn_roles|length > 0 and ovn_release == "ppa"'
 
-- name: Add OVN PPA package source
+- name: Add Zabbly package source
   ansible.builtin.template:
     src: ovn-ppa.sources.j2
-    dest: /etc/apt/sources.list.d/ansible-ovn-ppa.sources
+    dest: /etc/apt/sources.list.d/ansible-zabbly-ovn-{{ incus_release }}.sources
     mode: "0644"
   notify: Update apt
   when: 'ovn_roles|length > 0 and ovn_release == "ppa"'
